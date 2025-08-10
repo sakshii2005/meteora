@@ -149,6 +149,35 @@ export function updateCurrentWeather(weatherData, locationData) {
   updateFavoriteButton(locationData);
 }
 
+// GetDomElements
+export function getDOMElements() {
+  const byId = id => document.getElementById(id);
+  return {
+    loading: byId('loading'),
+    weatherContent: byId('weather-content'),
+    errorMessage: byId('error-message'),
+    errorText: byId('error-text'),
+    searchResults: byId('search-results'),
+    currentLocation: byId('current-location'),
+    currentTime: byId('current-time'),
+    currentIcon: byId('current-icon'),
+    currentTemp: byId('current-temp'),
+    currentCondition: byId('current-condition'),
+    feelsLike: byId('feels-like'),
+    humidity: byId('humidity'),
+    windSpeed: byId('wind-speed'),
+    pressure: byId('pressure'),
+    uvIndex: byId('uv-index'),
+    visibility: byId('visibility'),
+    moonPhase: byId('moon-phase'),
+    dailyForecast: byId('daily-forecast'),
+    airQuality: byId('air-quality'),
+    favoriteBtn: byId('favorite-btn'),
+    favoritesList: byId('favorites-list'),
+    favoritesSection: byId('favorites-section')
+  };
+}
+
 // Update daily forecast display
 export function updateDailyForecast(dailyData) {
   if (!dailyData || dailyData.length === 0) return;
