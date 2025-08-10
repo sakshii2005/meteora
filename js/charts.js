@@ -1,6 +1,5 @@
 // charts.js
 import { appState } from './state.js';
-import Chart from 'chart.js/auto';
 
 let tempChart = null;
 let precipitationChart = null;
@@ -13,6 +12,83 @@ Chart.defaults.plugins.legend.display = false;
 Chart.defaults.elements.point.radius = 3;
 Chart.defaults.elements.point.hoverRadius = 5;
 Chart.defaults.elements.line.tension = 0.4;
+
+//PLS I HOPE THIS WORKS
+/**
+ * Update or create the hourly weather chart
+ * @param {Object} data - The chart data { labels: [...], temps: [...] }
+ */
+export function updateHourlyChart(data) {
+    const ctx = document.getElementById('hourlyChart')?.getContext('2d');
+    if (!ctx) return;
+
+    // If a chart already exists, destroy it before creating a new one
+    if (hourlyChart) {
+        hourlyChart.destroy();
+    }
+
+    hourlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels, // e.g. ["10 AM", "11 AM", ...]
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: data.temps, // e.g. [20, 21, 23, ...]
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                pointBackgroundColor: '#3b82f6',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.parsed.y}°C`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Update chart theme (light/dark mode)
+ * @param {boolean} isDarkMode - true for dark mode, false for light mode
+ */
+export function updateChartTheme(isDarkMode) {
+    if (!hourlyChart) return;
+
+    const textColor = isDarkMode ? '#e5e7eb' : '#111827';
+    const gridColor = isDarkMode ? 'rgba(229, 231, 235, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    hourlyChart.options.scales.x.ticks.color = textColor;
+    hourlyChart.options.scales.y.ticks.color = textColor;
+    hourlyChart.options.scales.x.grid.color = gridColor;
+    hourlyChart.options.scales.y.grid.color = gridColor;
+    hourlyChart.update();
+}
+
+/**
+ * Resize all charts on window resize
+ */
+export function resizeCharts() {
+    if (hourlyChart) {
+        hourlyChart.resize();
+    }
+}
+
 
 // Initialize both charts
 export function initializeCharts() {
