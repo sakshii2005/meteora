@@ -1,334 +1,300 @@
 // Application state management
-export class AppState {
-  constructor() {
-    this.currentLocation = null;
-    this.currentWeather = null;
-    this.favorites = this.loadFavorites();
-    this.settings = this.loadSettings();
-    this.isLoading = false;
-    this.error = null;
-    
-    // Event listeners for state changes
-    this.listeners = {
-      locationChange: [],
-      weatherChange: [],
-      favoritesChange: [],
-      settingsChange: [],
-      loadingChange: [],
-      errorChange: []
-    };
-  }
-
-  // Event system
-  on(event, callback) {
-    if (this.listeners[event]) {
-      this.listeners[event].push(callback);
-    }
-  }
-
-  emit(event, data) {
-    if (this.listeners[event]) {
-      this.listeners[event].forEach(callback => callback(data));
-    }
-  }
-
-  // Location management
-  setCurrentLocation(location) {
-    this.currentLocation = location;
-    this.emit('locationChange', location);
-    this.saveCurrentLocation(location);
-  }
-
-  getCurrentLocation() {
-    return this.currentLocation;
-  }
-
-  saveCurrentLocation(location) {
-    try {
-      localStorage.setItem('weatherflow_current_location', JSON.stringify(location));
-    } catch (error) {
-      console.error('Failed to save current location:', error);
-    }
-  }
-
-  loadCurrentLocation() {
-    try {
-      const saved = localStorage.getItem('weatherflow_current_location');
-      if (saved) {
-        this.currentLocation = JSON.parse(saved);
-        return this.currentLocation;
-      }
-    } catch (error) {
-      console.error('Failed to load current location:', error);
-    }
-    return null;
-  }
-
-  // Weather data management
-  setCurrentWeather(weather) {
-    this.currentWeather = weather;
-    this.emit('weatherChange', weather);
-  }
-
-  getCurrentWeather() {
-    return this.currentWeather;
-  }
-
-  // Favorites management
-  addFavorite(location) {
-    const exists = this.favorites.find(fav => 
-      Math.abs(fav.latitude - location.latitude) < 0.01 && 
-      Math.abs(fav.longitude - location.longitude) < 0.01
-    );
-    
-    if (!exists) {
-      const favorite = {
-        id: Date.now().toString(),
-        name: location.name,
-        country: location.country,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        addedAt: new Date().toISOString()
-      };
-      
-      this.favorites.push(favorite);
-      this.saveFavorites();
-      this.emit('favoritesChange', this.favorites);
-      return true;
-    }
-    return false;
-  }
-
-  removeFavorite(locationId) {
-    const index = this.favorites.findIndex(fav => fav.id === locationId);
-    if (index !== -1) {
-      this.favorites.splice(index, 1);
-      this.saveFavorites();
-      this.emit('favoritesChange', this.favorites);
-      return true;
-    }
-    return false;
-  }
-
-  getFavorites() {
-    return this.favorites;
-  }
-
-  isFavorite(location) {
-    return this.favorites.some(fav => 
-      Math.abs(fav.latitude - location.latitude) < 0.01 && 
-      Math.abs(fav.longitude - location.longitude) < 0.01
-    );
-  }
-
-  saveFavorites() {
-    try {
-      localStorage.setItem('weatherflow_favorites', JSON.stringify(this.favorites));
-    } catch (error) {
-      console.error('Failed to save favorites:', error);
-    }
-  }
-
-  loadFavorites() {
-    try {
-      const saved = localStorage.getItem('weatherflow_favorites');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('Failed to load favorites:', error);
-    }
-    return [];
-  }
-
-  // Settings management
-  updateSetting(key, value) {
-    this.settings[key] = value;
-    this.saveSettings();
-    this.emit('settingsChange', { key, value, settings: this.settings });
-  }
-
-  getSetting(key, defaultValue = null) {
-    return this.settings[key] ?? defaultValue;
-  }
-
-  getSettings() {
-    return { ...this.settings };
-  }
-
-  saveSettings() {
-    try {
-      localStorage.setItem('weatherflow_settings', JSON.stringify(this.settings));
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-    }
-  }
-
-  loadSettings() {
-    try {
-      const saved = localStorage.getItem('weatherflow_settings');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-    
-    // Default settings
-    return {
-      temperatureUnit: 'celsius',
-      theme: 'auto',
-      notifications: false,
-      backgroundUpdates: true
-    };
-  }
-
-  // Loading state management
-  setLoading(isLoading) {
-    this.isLoading = isLoading;
-    this.emit('loadingChange', isLoading);
-  }
-
-  getLoading() {
-    return this.isLoading;
-  }
-
-  // Error management
-  setError(error) {
-    this.error = error;
-    this.emit('errorChange', error);
-  }
-
-  clearError() {
-    this.error = null;
-    this.emit('errorChange', null);
-  }
-
-  getError() {
-    return this.error;
-  }
-
-  // Temperature unit conversion
-  convertTemperature(temp, fromUnit = 'celsius', toUnit = null) {
-    if (toUnit === null) {
-      toUnit = this.getSetting('temperatureUnit', 'celsius');
-    }
-    
-    if (fromUnit === toUnit) return temp;
-    
-    if (fromUnit === 'celsius' && toUnit === 'fahrenheit') {
-      return (temp * 9/5) + 32;
-    }
-    
-    if (fromUnit === 'fahrenheit' && toUnit === 'celsius') {
-      return (temp - 32) * 5/9;
-    }
-    
-    return temp;
-  }
-
-  formatTemperature(temp, showUnit = true) {
-    if (temp === null || temp === undefined) return '--°';
-    
-    const unit = this.getSetting('temperatureUnit', 'celsius');
-    const convertedTemp = this.convertTemperature(temp, 'celsius', unit);
-    const rounded = Math.round(convertedTemp);
-    
-    if (showUnit) {
-      return `${rounded}°${unit === 'celsius' ? 'C' : 'F'}`;
-    }
-    
-    return `${rounded}°`;
-  }
-
-  // Wind speed conversion
-  convertWindSpeed(speed, fromUnit = 'kmh', toUnit = 'kmh') {
-    if (fromUnit === toUnit) return speed;
-    
-    // Convert from km/h to other units
-    if (fromUnit === 'kmh') {
-      switch (toUnit) {
-        case 'mph': return speed * 0.621371;
-        case 'ms': return speed / 3.6;
-        case 'kn': return speed * 0.539957;
-        default: return speed;
-      }
-    }
-    
-    return speed;
-  }
-
-  formatWindSpeed(speed) {
-    if (speed === null || speed === undefined) return '-- km/h';
-    return `${Math.round(speed)} km/h`;
-  }
-
-  // Data persistence
-  clearAllData() {
-    try {
-      localStorage.removeItem('weatherflow_favorites');
-      localStorage.removeItem('weatherflow_settings');
-      localStorage.removeItem('weatherflow_current_location');
-      
-      this.favorites = [];
-      this.settings = this.loadSettings(); // Reload defaults
-      this.currentLocation = null;
-      this.currentWeather = null;
-      
-      this.emit('favoritesChange', this.favorites);
-      this.emit('settingsChange', { settings: this.settings });
-      this.emit('locationChange', null);
-      this.emit('weatherChange', null);
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to clear data:', error);
-      return false;
-    }
-  }
-
-  // Export/Import data (for future use)
-  exportData() {
-    return {
-      favorites: this.favorites,
-      settings: this.settings,
-      currentLocation: this.currentLocation,
-      timestamp: new Date().toISOString(),
-      version: '1.0'
-    };
-  }
-
-  importData(data) {
-    try {
-      if (data.version && data.favorites && data.settings) {
-        this.favorites = data.favorites;
-        this.settings = { ...this.loadSettings(), ...data.settings };
+class AppState {
+    constructor() {
+        this.data = {
+            // Current location and weather
+            currentLocation: null,
+            currentWeather: null,
+            currentAirQuality: null,
+            
+            // User preferences
+            settings: {
+                temperatureUnit: 'celsius', // celsius or fahrenheit
+                windSpeedUnit: 'kmh', // kmh, mph, ms
+                timeFormat: '24', // 24 or 12
+                theme: 'light', // light or dark
+                autoRefresh: true,
+                refreshInterval: 10 // minutes
+            },
+            
+            // Favorites
+            favorites: [],
+            
+            // UI state
+            isLoading: false,
+            lastUpdated: null,
+            error: null
+        };
         
-        if (data.currentLocation) {
-          this.currentLocation = data.currentLocation;
+        this.listeners = [];
+        this.loadFromStorage();
+        this.detectSystemTheme();
+    }
+    
+    // Subscribe to state changes
+    subscribe(listener) {
+        this.listeners.push(listener);
+        return () => {
+            this.listeners = this.listeners.filter(l => l !== listener);
+        };
+    }
+    
+    // Notify all listeners of state changes
+    notify(changes = {}) {
+        this.listeners.forEach(listener => {
+            try {
+                listener(this.data, changes);
+            } catch (error) {
+                console.error('State listener error:', error);
+            }
+        });
+    }
+    
+    // Update state
+    update(updates, saveToStorage = true) {
+        const previousData = { ...this.data };
+        
+        if (typeof updates === 'function') {
+            updates = updates(this.data);
         }
         
-        this.saveFavorites();
-        this.saveSettings();
+        this.data = { ...this.data, ...updates };
         
-        if (data.currentLocation) {
-          this.saveCurrentLocation(data.currentLocation);
+        if (saveToStorage) {
+            this.saveToStorage();
         }
         
-        // Emit change events
-        this.emit('favoritesChange', this.favorites);
-        this.emit('settingsChange', { settings: this.settings });
-        this.emit('locationChange', this.currentLocation);
-        
-        return true;
-      }
-    } catch (error) {
-      console.error('Failed to import data:', error);
+        this.notify(updates);
     }
     
-    return false;
-  }
+    // Get current state
+    get() {
+        return { ...this.data };
+    }
+    
+    // Load state from localStorage
+    loadFromStorage() {
+        try {
+            const saved = localStorage.getItem('weatherapp_state');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                
+                // Merge with defaults, preserving structure
+                this.data = {
+                    ...this.data,
+                    settings: { ...this.data.settings, ...(parsed.settings || {}) },
+                    favorites: parsed.favorites || [],
+                    currentLocation: parsed.currentLocation || null
+                };
+            }
+        } catch (error) {
+            console.warn('Failed to load state from storage:', error);
+        }
+    }
+    
+    // Save state to localStorage
+    saveToStorage() {
+        try {
+            const toSave = {
+                settings: this.data.settings,
+                favorites: this.data.favorites,
+                currentLocation: this.data.currentLocation
+            };
+            
+            localStorage.setItem('weatherapp_state', JSON.stringify(toSave));
+        } catch (error) {
+            console.warn('Failed to save state to storage:', error);
+        }
+    }
+    
+    // Detect system theme preference
+    detectSystemTheme() {
+        if (!('theme' in (JSON.parse(localStorage.getItem('weatherapp_state') || '{}').settings || {}))) {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            this.updateSettings({ theme: prefersDark ? 'dark' : 'light' });
+        }
+        
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (this.data.settings.theme === 'auto') {
+                this.applyTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    }
+    
+    // Apply theme to document
+    applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        // Update meta theme-color for mobile browsers
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            metaThemeColor.content = theme === 'dark' ? '#000000' : '#6366F1';
+        }
+    }
+    
+    // Update settings
+    updateSettings(newSettings) {
+        this.update({
+            settings: { ...this.data.settings, ...newSettings }
+        });
+        
+        // Apply theme immediately if changed
+        if (newSettings.theme) {
+            this.applyTheme(newSettings.theme);
+        }
+    }
+    
+    // Set current location and weather
+    setCurrentWeather(location, weather, airQuality = null) {
+        this.update({
+            currentLocation: location,
+            currentWeather: weather,
+            currentAirQuality: airQuality,
+            lastUpdated: new Date().toISOString(),
+            error: null
+        });
+    }
+    
+    // Set loading state
+    setLoading(isLoading) {
+        this.update({ isLoading }, false); // Don't save loading state
+    }
+    
+    // Set error state
+    setError(error) {
+        this.update({
+            error: error?.message || error,
+            isLoading: false
+        }, false); // Don't save error state
+    }
+    
+    // Add location to favorites
+    addToFavorites(location, weather = null) {
+        const existing = this.data.favorites.find(fav => 
+            fav.latitude === location.latitude && fav.longitude === location.longitude
+        );
+        
+        if (!existing) {
+            const favorite = {
+                id: `${location.latitude},${location.longitude}`,
+                name: location.name,
+                country: location.country,
+                admin1: location.admin1,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                addedAt: new Date().toISOString(),
+                lastWeather: weather ? {
+                    temperature: weather.current?.temperature_2m,
+                    weatherCode: weather.current?.weather_code,
+                    updatedAt: new Date().toISOString()
+                } : null
+            };
+            
+            this.update({
+                favorites: [...this.data.favorites, favorite]
+            });
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Remove location from favorites
+    removeFromFavorites(locationId) {
+        this.update({
+            favorites: this.data.favorites.filter(fav => fav.id !== locationId)
+        });
+    }
+    
+    // Check if location is in favorites
+    isFavorite(latitude, longitude) {
+        return this.data.favorites.some(fav => 
+            fav.latitude === latitude && fav.longitude === longitude
+        );
+    }
+    
+    // Update favorite weather data
+    updateFavoriteWeather(locationId, weather) {
+        const favorites = this.data.favorites.map(fav => {
+            if (fav.id === locationId) {
+                return {
+                    ...fav,
+                    lastWeather: {
+                        temperature: weather.current?.temperature_2m,
+                        weatherCode: weather.current?.weather_code,
+                        updatedAt: new Date().toISOString()
+                    }
+                };
+            }
+            return fav;
+        });
+        
+        this.update({ favorites });
+    }
+    
+    // Get formatted temperature based on unit preference
+    formatTemperature(celsius) {
+        if (celsius === null || celsius === undefined) return '--';
+        
+        if (this.data.settings.temperatureUnit === 'fahrenheit') {
+            const fahrenheit = (celsius * 9/5) + 32;
+            return `${Math.round(fahrenheit)}°F`;
+        }
+        
+        return `${Math.round(celsius)}°C`;
+    }
+    
+    // Get formatted wind speed based on unit preference
+    formatWindSpeed(kmh) {
+        if (kmh === null || kmh === undefined) return '--';
+        
+        switch (this.data.settings.windSpeedUnit) {
+            case 'mph':
+                return `${Math.round(kmh * 0.621371)} mph`;
+            case 'ms':
+                return `${Math.round(kmh * 0.277778)} m/s`;
+            default:
+                return `${Math.round(kmh)} km/h`;
+        }
+    }
+    
+    // Get formatted time based on format preference
+    formatTime(time) {
+        if (!time) return '--';
+        
+        const date = new Date(time);
+        const format = this.data.settings.timeFormat === '12' ? 'h:mm A' : 'HH:mm';
+        
+        return dayjs(date).format(format);
+    }
+    
+    // Clear all data (for reset functionality)
+    reset() {
+        const defaultSettings = {
+            temperatureUnit: 'celsius',
+            windSpeedUnit: 'kmh',
+            timeFormat: '24',
+            theme: 'light',
+            autoRefresh: true,
+            refreshInterval: 10
+        };
+        
+        this.update({
+            currentLocation: null,
+            currentWeather: null,
+            currentAirQuality: null,
+            settings: defaultSettings,
+            favorites: [],
+            isLoading: false,
+            lastUpdated: null,
+            error: null
+        });
+        
+        localStorage.removeItem('weatherapp_state');
+    }
 }
 
-// Export singleton instance
+// Create and export singleton instance
 export const appState = new AppState();

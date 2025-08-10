@@ -1,7 +1,6 @@
-// ui.js
+// UI rendering and management functions
 import { appState } from './state.js';
 import { getWeatherIcon, getAQIDescription } from './api.js';
-import { getMoonPhase } from './api.js';
 
 // DOM element references
 const elements = {
@@ -21,7 +20,6 @@ const elements = {
   pressure: document.getElementById('pressure'),
   uvIndex: document.getElementById('uv-index'),
   visibility: document.getElementById('visibility'),
-  moonPhase: document.getElementById('moon-phase'),
   dailyForecast: document.getElementById('daily-forecast'),
   airQuality: document.getElementById('air-quality'),
   favoriteBtn: document.getElementById('favorite-btn'),
@@ -140,11 +138,6 @@ export function updateCurrentWeather(weatherData, locationData) {
   // UV Index (from daily data if available)
   const uvIndex = weatherData.daily?.[0]?.uvIndex;
   elements.uvIndex.textContent = uvIndex ? Math.round(uvIndex) : '--';
-
-  // Moon Phase
-  const moon = getMoonPhase(new Date(weatherData.current.time));
-  elements.moonPhase.textContent = `${moon.emoji} ${moon.name}`;
-  elements.moonPhase.title = `Moon Phase: ${moon.name}`;
   
   // Update favorite button state
   updateFavoriteButton(locationData);
@@ -160,7 +153,7 @@ export function updateDailyForecast(dailyData) {
     const icon = getWeatherIcon((day.tempMax + day.tempMin) / 2, day.precipitationProbability);
     
     return `
-      <div class="text-center p-4 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+      <div class="text-center p-4 rounded-lg hover:bg-gray-50 transition-colors">
         <div class="font-medium text-gray-900 mb-2">${dayName}</div>
         <div class="text-3xl mb-2 weather-icon">${icon}</div>
         <div class="space-y-1">
@@ -173,18 +166,6 @@ export function updateDailyForecast(dailyData) {
   }).join('');
 
   elements.dailyForecast.innerHTML = html;
-
-  // === NEW: Make daily forecast clickable to update charts ===
-  Array.from(elements.dailyForecast.children).forEach((dayEl, index) => {
-    dayEl.addEventListener('click', () => {
-      console.log(`Day clicked: index ${index}`, appState.getCurrentWeather()?.daily[index]);
-      
-      const weather = appState.getCurrentWeather();
-      import('./charts.js').then(({ updateCharts }) => {
-        updateCharts(weather, index);
-      });
-    });
-  });
 }
 
 // Update air quality display

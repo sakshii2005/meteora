@@ -1,233 +1,299 @@
-// API functions for weather data
-const GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
-const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
-const AIR_QUALITY_API = 'https://air-quality-api.open-meteo.com/v1/air-quality';
-
-// Cache for API responses
-const cache = new Map();
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-
-// Generic fetch with error handling and caching
-async function fetchWithCache(url, cacheKey) {
-  // Check cache first
-  if (cache.has(cacheKey)) {
-    const { data, timestamp } = cache.get(cacheKey);
-    if (Date.now() - timestamp < CACHE_DURATION) {
-      return data;
-    }
-  }
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Cache the response
-    cache.set(cacheKey, {
-      data,
-      timestamp: Date.now()
-    });
-    
-    return data;
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw new Error('Network request failed. Please check your connection.');
-  }
-}
-
-// Search for cities
-export async function searchCities(query) {
-  if (!query || query.length < 2) return [];
-  
-  const url = `${GEOCODING_API}?name=${encodeURIComponent(query)}&count=5&language=en&format=json`;
-  const cacheKey = `geocode_${query}`;
-  
-  try {
-    const data = await fetchWithCache(url, cacheKey);
-    return data.results || [];
-  } catch (error) {
-    console.error('City search error:', error);
-    return [];
-  }
-}
-
-// Get weather forecast
-export async function getWeatherForecast(latitude, longitude) {
-  const params = new URLSearchParams({
-    latitude: latitude.toString(),
-    longitude: longitude.toString(),
-    hourly: 'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,surface_pressure,visibility',
-    daily: 'temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max',
-    current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,visibility',
-    timezone: 'auto',
-    forecast_days: 7
-  });
-
-  const url = `${WEATHER_API}?${params}`;
-  const cacheKey = `weather_${latitude}_${longitude}`;
-  
-  try {
-    const data = await fetchWithCache(url, cacheKey);
-    return processWeatherData(data);
-  } catch (error) {
-    console.error('Weather forecast error:', error);
-    throw error;
-  }
-}
-
-// Get air quality data
-export async function getAirQuality(latitude, longitude) {
-  const params = new URLSearchParams({
-    latitude: latitude.toString(),
-    longitude: longitude.toString(),
-    hourly: 'pm2_5,pm10,us_aqi',
+// API configuration and endpoints
+const API_CONFIG = {
+    weather: 'https://api.open-meteo.com/v1/forecast',
+    geocoding: 'https://geocoding-api.open-meteo.com/v1/search',
+    airQuality: 'https://air-quality-api.open-meteo.com/v1/air-quality',
     timezone: 'auto'
-  });
+};
 
-  const url = `${AIR_QUALITY_API}?${params}`;
-  const cacheKey = `air_quality_${latitude}_${longitude}`;
-  
-  try {
-    const data = await fetchWithCache(url, cacheKey);
-    return processAirQualityData(data);
-  } catch (error) {
-    console.error('Air quality error:', error);
-    // Return null instead of throwing to make air quality optional
-    return null;
-  }
+// Request timeout duration
+const REQUEST_TIMEOUT = 10000;
+
+// Create a request with timeout
+function createRequestWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    
+    return fetch(url, {
+        ...options,
+        signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
 }
 
-// Process weather data into a more usable format
-function processWeatherData(data) {
-  const current = data.current || {};
-  const hourly = data.hourly || {};
-  const daily = data.daily || {};
-
-  // Get current weather
-  const currentWeather = {
-    temperature: current.temperature_2m,
-    humidity: current.relative_humidity_2m,
-    windSpeed: current.wind_speed_10m,
-    pressure: current.surface_pressure,
-    visibility: current.visibility,
-    time: current.time
-  };
-
-  // Process hourly data for next 24 hours
-  const next24Hours = [];
-  for (let i = 0; i < Math.min(24, hourly.time?.length || 0); i++) {
-    next24Hours.push({
-      time: hourly.time[i],
-      temperature: hourly.temperature_2m[i],
-      humidity: hourly.relative_humidity_2m[i],
-      precipitationProbability: hourly.precipitation_probability[i],
-      windSpeed: hourly.wind_speed_10m[i],
-      pressure: hourly.surface_pressure[i],
-      visibility: hourly.visibility[i]
-    });
-  }
-
-  // Process daily forecast
-  const dailyForecast = [];
-  for (let i = 0; i < Math.min(7, daily.time?.length || 0); i++) {
-    dailyForecast.push({
-      date: daily.time[i],
-      tempMax: daily.temperature_2m_max[i],
-      tempMin: daily.temperature_2m_min[i],
-      sunrise: daily.sunrise[i],
-      sunset: daily.sunset[i],
-      uvIndex: daily.uv_index_max[i],
-      precipitationProbability: daily.precipitation_probability_max[i]
-    });
-  }
-
-  return {
-    current: currentWeather,
-    hourly: next24Hours,
-    daily: dailyForecast,
-    timezone: data.timezone
-  };
-}
-
-// Process air quality data
-function processAirQualityData(data) {
-  if (!data.hourly) return null;
-
-  const hourly = data.hourly;
-  const currentIndex = 0; // Use current hour
-  
-  return {
-    pm2_5: hourly.pm2_5[currentIndex],
-    pm10: hourly.pm10[currentIndex],
-    usAqi: hourly.us_aqi[currentIndex],
-    time: hourly.time[currentIndex]
-  };
-}
-
-// Get user's location using browser geolocation
-export function getCurrentPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'));
-      return;
+// Error handling utility
+function handleApiError(error, context) {
+    console.error(`API Error in ${context}:`, error);
+    
+    if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection.');
     }
+    
+    if (!navigator.onLine) {
+        throw new Error('No internet connection. Please check your network.');
+    }
+    
+    throw new Error(`Failed to ${context}. Please try again.`);
+}
 
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 5 * 60 * 1000 // 5 minutes
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
-      },
-      (error) => {
-        let message;
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            message = 'Location access denied by user';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            message = 'Location information is unavailable';
-            break;
-          case error.TIMEOUT:
-            message = 'Location request timed out';
-            break;
-          default:
-            message = 'An unknown error occurred';
-            break;
+// Geocoding API - Search for cities
+export async function searchCities(query) {
+    try {
+        if (!query || query.trim().length < 2) {
+            return [];
         }
-        reject(new Error(message));
-      },
-      options
-    );
-  });
+
+        const url = new URL(API_CONFIG.geocoding);
+        url.searchParams.append('name', query.trim());
+        url.searchParams.append('count', '8');
+        url.searchParams.append('language', 'en');
+        url.searchParams.append('format', 'json');
+
+        const response = await createRequestWithTimeout(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        return data.results?.map(result => ({
+            id: `${result.latitude},${result.longitude}`,
+            name: result.name,
+            country: result.country,
+            admin1: result.admin1,
+            latitude: result.latitude,
+            longitude: result.longitude,
+            timezone: result.timezone,
+            population: result.population || 0
+        })) || [];
+        
+    } catch (error) {
+        handleApiError(error, 'search cities');
+    }
 }
 
-// Weather condition mapping
-export function getWeatherIcon(temperature, precipitationProbability) {
-  if (precipitationProbability > 70) return '🌧️';
-  if (precipitationProbability > 40) return '⛅';
-  if (temperature > 25) return '☀️';
-  if (temperature > 15) return '🌤️';
-  if (temperature > 0) return '❄️';
-  return '🌨️';
+
+//MOON PHASE
+export function getMoonPhase(date = new Date()) {
+  // Simple approximation based on known new moon
+  const synodicMonth = 29.53058867; // average moon cycle in days
+  const knownNewMoon = new Date('2023-01-21T20:53:00Z').getTime();
+  const diffDays = (date.getTime() - knownNewMoon) / (1000 * 60 * 60 * 24);
+  const phase = (diffDays % synodicMonth + synodicMonth) % synodicMonth;
+
+  const phases = [
+    { emoji: "🌑", name: "New Moon" },
+    { emoji: "🌒", name: "Waxing Crescent" },
+    { emoji: "🌓", name: "First Quarter" },
+    { emoji: "🌔", name: "Waxing Gibbous" },
+    { emoji: "🌕", name: "Full Moon" },
+    { emoji: "🌖", name: "Waning Gibbous" },
+    { emoji: "🌗", name: "Last Quarter" },
+    { emoji: "🌘", name: "Waning Crescent" }
+  ];
+  
+  const index = Math.floor((phase / synodicMonth) * 8);
+  return phases[index];
 }
 
-// Air quality level description
-export function getAQIDescription(aqi) {
-  if (aqi <= 50) return { level: 'Good', color: 'text-green-600', bg: 'bg-green-100' };
-  if (aqi <= 100) return { level: 'Moderate', color: 'text-yellow-600', bg: 'bg-yellow-100' };
-  if (aqi <= 150) return { level: 'Unhealthy for Sensitive', color: 'text-orange-600', bg: 'bg-orange-100' };
-  if (aqi <= 200) return { level: 'Unhealthy', color: 'text-red-600', bg: 'bg-red-100' };
-  if (aqi <= 300) return { level: 'Very Unhealthy', color: 'text-purple-600', bg: 'bg-purple-100' };
-  return { level: 'Hazardous', color: 'text-red-800', bg: 'bg-red-200' };
+
+// Weather API - Get current and forecast data
+export async function getWeatherData(latitude, longitude) {
+    try {
+        const url = new URL(API_CONFIG.weather);
+        
+        // Set coordinates
+        url.searchParams.append('latitude', latitude);
+        url.searchParams.append('longitude', longitude);
+        url.searchParams.append('timezone', API_CONFIG.timezone);
+        
+        // Current weather parameters
+        url.searchParams.append('current', [
+            'temperature_2m',
+            'apparent_temperature',
+            'relative_humidity_2m',
+            'precipitation',
+            'weather_code',
+            'pressure_msl',
+            'wind_speed_10m',
+            'wind_direction_10m',
+            'uv_index'
+        ].join(','));
+        
+        // Hourly parameters
+        url.searchParams.append('hourly', [
+            'temperature_2m',
+            'apparent_temperature',
+            'precipitation_probability',
+            'precipitation',
+            'weather_code',
+            'pressure_msl',
+            'wind_speed_10m',
+            'wind_direction_10m',
+            'uv_index',
+            'visibility'
+        ].join(','));
+        
+        // Daily parameters
+        url.searchParams.append('daily', [
+            'weather_code',
+            'temperature_2m_max',
+            'temperature_2m_min',
+            'apparent_temperature_max',
+            'apparent_temperature_min',
+            'sunrise',
+            'sunset',
+            'uv_index_max',
+            'precipitation_sum',
+            'rain_sum',
+            'precipitation_probability_max',
+            'wind_speed_10m_max',
+            'wind_direction_10m_dominant'
+        ].join(','));
+        
+        const response = await createRequestWithTimeout(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            current: data.current,
+            hourly: data.hourly,
+            daily: data.daily,
+            timezone: data.timezone,
+            elevation: data.elevation
+        };
+        
+    } catch (error) {
+        handleApiError(error, 'fetch weather data');
+    }
+}
+
+// Air Quality API - Get air quality data
+export async function getAirQualityData(latitude, longitude) {
+    try {
+        const url = new URL(API_CONFIG.airQuality);
+        
+        url.searchParams.append('latitude', latitude);
+        url.searchParams.append('longitude', longitude);
+        url.searchParams.append('timezone', API_CONFIG.timezone);
+        
+        // Air quality parameters
+        url.searchParams.append('current', [
+            'us_aqi',
+            'pm10',
+            'pm2_5',
+            'carbon_monoxide',
+            'nitrogen_dioxide',
+            'sulphur_dioxide',
+            'ozone'
+        ].join(','));
+        
+        url.searchParams.append('hourly', [
+            'us_aqi',
+            'pm10',
+            'pm2_5'
+        ].join(','));
+
+        const response = await createRequestWithTimeout(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            current: data.current,
+            hourly: data.hourly
+        };
+        
+    } catch (error) {
+        handleApiError(error, 'fetch air quality data');
+    }
+}
+
+// Get location data from coordinates
+export async function reverseGeocode(latitude, longitude) {
+    try {
+        const url = new URL(API_CONFIG.geocoding);
+        url.searchParams.append('latitude', latitude);
+        url.searchParams.append('longitude', longitude);
+        url.searchParams.append('count', '1');
+        url.searchParams.append('language', 'en');
+        url.searchParams.append('format', 'json');
+
+        const response = await createRequestWithTimeout(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            const result = data.results[0];
+            return {
+                name: result.name,
+                country: result.country,
+                admin1: result.admin1,
+                latitude: result.latitude,
+                longitude: result.longitude
+            };
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.warn('Reverse geocoding failed:', error);
+        return null;
+    }
+}
+
+// Get user's current position
+export function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation is not supported by this browser'));
+            return;
+        }
+
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                });
+            },
+            (error) => {
+                let message;
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        message = 'Location access denied. Please enable location services.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        message = 'Location information unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        message = 'Location request timed out.';
+                        break;
+                    default:
+                        message = 'An unknown error occurred while getting location.';
+                        break;
+                }
+                reject(new Error(message));
+            },
+            options
+        );
+    });
 }

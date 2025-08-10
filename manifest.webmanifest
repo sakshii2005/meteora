@@ -1,77 +1,85 @@
 {
-  "name": "WeatherFlow - Beautiful Weather Forecasts",
-  "short_name": "WeatherFlow",
-  "description": "Get accurate weather forecasts, air quality data, and beautiful visualizations for any location worldwide.",
+  "name": "Meteora - Weather App",
+  "short_name": "Meteora",
+  "description": "A beautiful weather app with glassmorphism design and comprehensive weather information",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3B82F6",
+  "background_color": "#6366F1",
+  "theme_color": "#6366F1",
   "orientation": "portrait-primary",
-  "categories": ["weather", "utilities", "productivity"],
+  "categories": ["weather", "lifestyle", "productivity"],
   "lang": "en",
   "dir": "ltr",
   "icons": [
     {
-      "src": "icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-192x192.png",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iIzYzNjZGMSIgcng9IjQiLz48cGF0aCBkPSJNNiAxMGMtMS4xIDAtMiAuOS0yIDJzMCAyIC45IDJoMTJjMS4xIDAgMi0uOSAyLTJzLS45LTItMi0yaC0xdi0xYzAtMS42Ni0xLjM0LTMtMy0zcy0zIDEuMzQtMyAzdjFINloiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iOCIgeT0iMTUiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjxyZWN0IHg9IjYiIHk9IjE3IiB3aWR0aD0iMiIgaGVpZ2h0PSI0IiByeD0iMSIgZmlsbD0id2hpdGUiLz48cmVjdCB4PSIxMCIgeT0iMTYiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPgo=",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512x512.png",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iIzYzNjZGMSIgcng9IjQiLz48cGF0aCBkPSJNNiAxMGMtMS4xIDAtMiAuOS0yIDJzMCAyIC45IDJoMTJjMS4xIDAgMi0uOSAyLTJzLS45LTItMi0yaC0xdi0xYzAtMS42Ni0xLjM0LTMtMy0zcy0zIDEuMzQtMyAzdjFINloiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iOCIgeT0iMTUiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjxyZWN0IHg9IjYiIHk9IjE3IiB3aWR0aD0iMiIgaGVpZ2h0PSI0IiByeD0iMSIgZmlsbD0id2hpdGUiLz48cmVjdCB4PSIxMCIgeT0iMTYiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPgo=",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iIzAwMDAwMCIgcng9IjQiLz48cGF0aCBkPSJNNiAxMGMtMS4xIDAtMiAuOS0yIDJzMCAyIC45IDJoMTJjMS4xIDAgMi0uOSAyLTJzLS45LTItMi0yaC0xdi0xYzAtMS42Ni0xLjM0LTMtMy0zcy0zIDEuMzQtMyAzdjFINloiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iOCIgeT0iMTUiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjxyZWN0IHg9IjYiIHk9IjE3IiB3aWR0aD0iMiIgaGVpZ2h0PSI0IiByeD0iMSIgZmlsbD0id2hpdGUiLz48cmVjdCB4PSIxMCIgeT0iMTYiIHdpZHRoPSIyIiBoZWlnaHQ9IjQiIHJ4PSIxIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPgo=",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Current Weather",
+      "short_name": "Current",
+      "description": "View current weather conditions",
+      "url": "/?view=current",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI1IiBmaWxsPSIjNjM2NkYxIi8+PC9zdmc+Cg==",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "7-Day Forecast",
+      "short_name": "Forecast",
+      "description": "View 7-day weather forecast",
+      "url": "/?view=forecast",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNiAxMGMtMS4xIDAtMiAuOS0yIDJzMCAyIC45IDJoMTJjMS4xIDAgMi0uOSAyLTJzLS45LTItMi0yaC0xdi0xYzAtMS42Ni0xLjM0LTMtMy0zcy0zIDEuMzQtMyAzdjFINloiIGZpbGw9IiM2MzY2RjEiLz48L3N2Zz4K",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "screenshots": [
     {
-      "src": "screenshots/desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjU2OCIgdmlld0JveD0iMCAwIDMyMCA1NjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSI1NjgiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzY2N2VlYSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzc2NGJhMiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjx0ZXh0IHg9IjE2MCIgeT0iMjAwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPldlYXRoZXJHbGFzczwvdGV4dD48dGV4dCB4PSIxNjAiIHk9IjMwMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iNDgiPjIy4oSDPC90ZXh0Pjx0ZXh0IHg9IjE2MCIgeT0iMzUwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxOCI+U3VubnkgYW5kIGNsZWFyPC90ZXh0PjwvcnVnPgo=",
+      "sizes": "320x568",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
     },
     {
-      "src": "screenshots/mobile.png",
-      "sizes": "375x812",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTY4IiBoZWlnaHQ9IjMyMCIgdmlld0JveD0iMCAwIDU2OCAzMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjU2OCIgaGVpZ2h0PSIzMjAiIGZpbGw9InVybCgjZ3JhZGllbnQyKSIvPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQyIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNjY3ZWVhIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNzY0YmEyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRleHQgeD0iMjg0IiB5PSIxMDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmb250LXdlaWdodD0iYm9sZCI+V2VhdGhlckdsYXNzPC90ZXh0Pjx0ZXh0IHg9IjI4NCIgeT0iMTgwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI0OCI+MjLigIMgQ2xlYXI8L3RleHQ+PC9zdmc+Cg==",
+      "sizes": "568x320",
+      "type": "image/svg+xml",
+      "form_factor": "wide"
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "scope": "/",
+  "id": "meteora-app",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "handle_links": "preferred",
+  "capture_links": "existing-client-navigate"
 }

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meteora - Previous Days</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgMTBjLTEuMSAwLTIgLjktMiAyczAgMiAuOSAyaDEyYzEuMSAwIDItLjkgMi0ycy0uOS0yLTItMmgtMXYtMWMwLTEuNjYtMS4zNC0zLTMtM3MtMyAxLjM0LTMgM3YxSDZaIiBmaWxsPSIjNjM2NkYxIi8+CjxyZWN0IHg9IjgiIHk9IjE1IiB3aWR0aD0iMiIgaGVpZ2h0PSI0IiByeD0iMSIgZmlsbD0iIzYzNjZGMSIvPgo8cmVjdCB4PSI2IiB5PSIxNyIgd2lkdGg9IjIiIGhlaWdodD0iNCIgcng9IjEiIGZpbGw9IiM2MzY2RjEiLz4KPHJlY3QgeD0iMTAiIHk9IjE2IiB3aWR0aD0iMiIgaGVpZ2h0PSI0IiByeD0iMSIgZmlsbD0iIzYzNjZGMSIvPgo8L3N2Zz4K" />
+  <meta name="theme-color" content="#6366F1" />
+</head>
+<body>
+  <div class="app">
+    <header class="header glass-effect">
+      <div class="header-content">
+        <h1 class="app-title">Previous Days</h1>
+        <div class="header-actions">
+          <a class="icon-btn" href="index.html" aria-label="Back to home">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content" class="main-content">
+      <section class="glass-effect" style="padding: var(--spacing-md);">
+        <div class="calendar-nav">
+          <button id="history-prev" class="icon-btn" aria-label="Previous month">‹</button>
+          <div id="history-month" class="calendar-month">—</div>
+          <button id="history-next" class="icon-btn" aria-label="Next month">›</button>
+        </div>
+
+        <div class="calendar-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span>
+          <span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+
+        <div id="history-grid" class="calendar-grid"></div>
+        <div id="history-details" class="history-details"></div>
+
+        <div id="history-empty" class="history-details" style="display:none;">
+          <em>No saved location. Go back and choose a city first.</em>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.js"></script>
+  <script type="module" src="js/history.js"></script>
+</body>
+</html>

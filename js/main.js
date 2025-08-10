@@ -1,386 +1,604 @@
-// Main application logic
+// Main application entry point
+import { searchCities, getWeatherData, getAirQualityData, getCurrentPosition, reverseGeocode } from './api.js';
 import { appState } from './state.js';
-import { initializeUI, showWeatherContent, displaySearchResults, hideSearchResults, updateAirQuality, showToast } from './ui.js';
-import { initializeCharts, updateCharts } from './charts.js';
-import { searchCities, getWeatherForecast, getAirQuality, getCurrentPosition } from './api.js';
+import { 
+    initializeDOMElements, 
+    showLoading, 
+    hideLoading, 
+    showError, 
+    showSuccess,
+    renderSearchSuggestions, 
+    hideSearchSuggestions,
+    renderCurrentWeather,
+    renderAirQuality,
+    renderAstronomy,
+    renderWeatherDetails,
+    renderWeeklyForecast,
+    updateSettingsUI,
+    toggleSettings,
+    toggleFavorites,
+    getDOMElements
+} from './ui.js';
+import { updateHourlyChart, updateChartTheme, resizeCharts } from './charts.js';
+import { debounce, throttle, isMobile, checkLocationPermission } from './utils.js';
 
-// Initialize dayjs plugins
-dayjs.extend(dayjs_plugin_relativeTime);
+// Application state
+let searchTimeout = null;
+let refreshInterval = null;
 
-// Application class
-class WeatherApp {
-  constructor() {
-    this.searchTimeout = null;
-    this.isInitialized = false;
-  }
-
-  async init() {
+// Initialize application
+async function initApp() {
+    console.log('Initializing Meteora app...');
+    
     try {
-      // Initialize UI and charts
-      initializeUI();
-      initializeCharts();
-      
-      // Set up event listeners
-      this.setupEventListeners();
-      
-      // Register service worker
-      this.registerServiceWorker();
-      
-      // Load saved location or get user's location
-      await this.loadInitialLocation();
-      
-      this.isInitialized = true;
-      console.log('WeatherFlow app initialized successfully');
+        // Initialize DOM elements
+        initializeDOMElements();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Initialize settings
+        initializeSettings();
+        
+        // Show loading
+        showLoading();
+        
+        // Try to load saved location or get current location
+        await initializeLocation();
+        
+        // Setup auto-refresh if enabled
+        setupAutoRefresh();
+        
+        // Initialize service worker for PWA
+        await initializeServiceWorker();
+        
+        console.log('App initialized successfully');
+        
     } catch (error) {
-      console.error('Failed to initialize app:', error);
-      appState.setError(new Error('Failed to initialize the application'));
+        console.error('Failed to initialize app:', error);
+        showError('Failed to initialize app. Please refresh the page.');
+    } finally {
+        hideLoading();
     }
-  }
+}
 
-  setupEventListeners() {
+// Setup event listeners
+function setupEventListeners() {
+    const elements = getDOMElements();
+    
     // Search functionality
-    const citySearch = document.getElementById('city-search');
-    const searchResults = document.getElementById('search-results');
-    const locateBtn = document.getElementById('locate-btn');
+    if (elements.searchInput) {
+        elements.searchInput.addEventListener('input', debounce(handleSearchInput, 300));
+        elements.searchInput.addEventListener('focus', handleSearchFocus);
+        elements.searchInput.addEventListener('blur', handleSearchBlur);
+        elements.searchInput.addEventListener('keydown', handleSearchKeydown);
+    }
+    
+    // Location button
+    if (elements.locationBtn) {
+        elements.locationBtn.addEventListener('click', handleLocationClick);
+    }
+    
+    // Theme toggle
+    if (elements.themeToggle) {
+        elements.themeToggle.addEventListener('click', handleThemeToggle);
+    }
+    
+    // Settings
+    if (elements.settingsBtn) {
+        elements.settingsBtn.addEventListener('click', () => toggleSettings(true));
+    }
+    
+    if (elements.closeSettings) {
+        elements.closeSettings.addEventListener('click', () => toggleSettings(false));
+    }
+    
+    // Settings modal background click
+    if (elements.settingsModal) {
+        elements.settingsModal.addEventListener('click', (e) => {
+            if (e.target === elements.settingsModal) {
+                toggleSettings(false);
+            }
+        });
+    }
+    
+    // Settings inputs
+    if (elements.tempUnit) {
+        elements.tempUnit.addEventListener('change', (e) => {
+            appState.updateSettings({ temperatureUnit: e.target.value });
+            refreshCurrentWeatherDisplay();
+        });
+    }
+    
+    if (elements.windUnit) {
+        elements.windUnit.addEventListener('change', (e) => {
+            appState.updateSettings({ windSpeedUnit: e.target.value });
+            refreshCurrentWeatherDisplay();
+        });
+    }
+    
+    if (elements.timeFormat) {
+        elements.timeFormat.addEventListener('change', (e) => {
+            appState.updateSettings({ timeFormat: e.target.value });
+            refreshCurrentWeatherDisplay();
+        });
+    }
+    
+    if (elements.autoRefresh) {
+        elements.autoRefresh.addEventListener('change', (e) => {
+            appState.updateSettings({ autoRefresh: e.target.checked });
+            setupAutoRefresh();
+        });
+    }
+    
+    // Search suggestions click handling
+    document.addEventListener('click', handleDocumentClick);
+    
+    // Window resize handling
+    window.addEventListener('resize', throttle(handleWindowResize, 250));
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    
+    // Online/offline handling
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Visibility change handling for refresh
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
 
-    // City search with debouncing
-    citySearch.addEventListener('input', (e) => {
-      const query = e.target.value.trim();
-      
-      clearTimeout(this.searchTimeout);
-      
-      if (query.length < 2) {
-        hideSearchResults();
+// Handle search input
+async function handleSearchInput(e) {
+    const query = e.target.value.trim();
+    
+    if (query.length < 2) {
+        hideSearchSuggestions();
         return;
-      }
-      
-      this.searchTimeout = setTimeout(async () => {
-        try {
-          const results = await searchCities(query);
-          displaySearchResults(results);
-        } catch (error) {
-          console.error('Search error:', error);
-          hideSearchResults();
-        }
-      }, 300);
-    });
+    }
+    
+    try {
+        const cities = await searchCities(query);
+        renderSearchSuggestions(cities);
+    } catch (error) {
+        console.error('Search failed:', error);
+        hideSearchSuggestions();
+    }
+}
 
-    // Handle search result selection
-    searchResults.addEventListener('click', (e) => {
-      const result = e.target.closest('.search-result');
-      if (result) {
-        const location = {
-          name: result.dataset.name,
-          country: result.dataset.country,
-          latitude: parseFloat(result.dataset.lat),
-          longitude: parseFloat(result.dataset.lon)
+// Handle search focus
+function handleSearchFocus() {
+    const elements = getDOMElements();
+    const query = elements.searchInput?.value.trim();
+    
+    if (query && query.length >= 2) {
+        searchCities(query).then(cities => {
+            renderSearchSuggestions(cities);
+        }).catch(() => {
+            // Ignore errors on focus
+        });
+    }
+}
+
+// Handle search blur (with delay to allow suggestion clicks)
+function handleSearchBlur() {
+    setTimeout(() => {
+        hideSearchSuggestions();
+    }, 150);
+}
+
+// Handle search keydown
+function handleSearchKeydown(e) {
+    const elements = getDOMElements();
+    
+    if (e.key === 'Escape') {
+        hideSearchSuggestions();
+        elements.searchInput?.blur();
+    }
+    
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const suggestions = elements.searchSuggestions?.querySelectorAll('.suggestion-item');
+        if (suggestions && suggestions.length > 0) {
+            suggestions[0].click();
+        }
+    }
+}
+
+// Handle location button click
+async function handleLocationClick() {
+    try {
+        showLoading();
+        
+        const permission = await checkLocationPermission();
+        if (permission === 'denied') {
+            showError('Location access denied. Please enable location permissions and try again.');
+            return;
+        }
+        
+        const position = await getCurrentPosition();
+        const locationData = await reverseGeocode(position.latitude, position.longitude);
+        
+        const location = locationData || {
+            name: 'Current Location',
+            latitude: position.latitude,
+            longitude: position.longitude,
+            country: '',
+            admin1: ''
         };
         
-        this.loadWeatherForLocation(location);
-        citySearch.value = location.name;
-        hideSearchResults();
-      }
-    });
-
-    // Use current location button
-    locateBtn.addEventListener('click', () => {
-      this.getCurrentLocation();
-    });
-
-    // Close search results when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#city-search') && !e.target.closest('#search-results')) {
-        hideSearchResults();
-      }
-    });
-
-    // Favorites functionality
-    const favoriteBtn = document.getElementById('favorite-btn');
-    favoriteBtn.addEventListener('click', () => {
-      this.toggleFavorite();
-    });
-
-    // Favorites list
-    const favoritesList = document.getElementById('favorites-list');
-    favoritesList.addEventListener('click', (e) => {
-      const favoriteItem = e.target.closest('.favorite-item');
-      const removeBtn = e.target.closest('.remove-favorite');
-      
-      if (removeBtn) {
-        e.stopPropagation();
-        const favoriteId = removeBtn.dataset.id;
-        appState.removeFavorite(favoriteId);
-        showToast('Location removed from favorites', 'success');
-      } else if (favoriteItem) {
-        const location = {
-          name: favoriteItem.dataset.name,
-          country: favoriteItem.dataset.country,
-          latitude: parseFloat(favoriteItem.dataset.lat),
-          longitude: parseFloat(favoriteItem.dataset.lon)
-        };
-        this.loadWeatherForLocation(location);
-      }
-    });
-
-    // Settings
-    const themeToggle = document.getElementById('theme-toggle');
-    const unitsToggle = document.getElementById('units-toggle');
-
-    themeToggle.addEventListener('click', () => {
-      this.toggleTheme();
-    });
-
-    unitsToggle.addEventListener('click', () => {
-      this.toggleUnits();
-    });
-
-    // Error retry
-    const retryBtn = document.getElementById('retry-btn');
-    retryBtn.addEventListener('click', () => {
-      appState.clearError();
-      const location = appState.getCurrentLocation();
-      if (location) {
-        this.loadWeatherForLocation(location);
-      } else {
-        this.loadInitialLocation();
-      }
-    });
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      // Focus search on '/' key
-      if (e.key === '/' && !e.target.matches('input, textarea')) {
-        e.preventDefault();
-        citySearch.focus();
-      }
-      
-      // Clear search on Escape
-      if (e.key === 'Escape') {
-        citySearch.blur();
-        hideSearchResults();
-      }
-    });
-
-    // Handle visibility changes for background updates
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && appState.getSetting('backgroundUpdates', true)) {
-        this.refreshWeatherData();
-      }
-    });
-
-    // Auto-refresh every 10 minutes
-    setInterval(() => {
-      if (appState.getSetting('backgroundUpdates', true)) {
-        this.refreshWeatherData();
-      }
-    }, 10 * 60 * 1000);
-  }
-
-  async loadInitialLocation() {
-    // Try to load saved location first
-    const savedLocation = appState.loadCurrentLocation();
-    if (savedLocation) {
-      await this.loadWeatherForLocation(savedLocation);
-      return;
-    }
-
-    // If no saved location, try to get current position
-    try {
-      await this.getCurrentLocation();
+        await loadWeatherData(location);
+        showSuccess('Location updated successfully');
+        
     } catch (error) {
-      // If geolocation fails, show default location (London)
-      const defaultLocation = {
-        name: 'London',
-        country: 'United Kingdom',
-        latitude: 51.5074,
-        longitude: -0.1278
-      };
-      await this.loadWeatherForLocation(defaultLocation);
-    }
-  }
-
-  async getCurrentLocation() {
-    try {
-      appState.setLoading(true);
-      const position = await getCurrentPosition();
-      
-      // Reverse geocode to get location name
-      const results = await searchCities(`${position.latitude},${position.longitude}`);
-      const locationName = results[0]?.name || 'Current Location';
-      const country = results[0]?.country || '';
-      
-      const location = {
-        name: locationName,
-        country: country,
-        latitude: position.latitude,
-        longitude: position.longitude
-      };
-      
-      await this.loadWeatherForLocation(location);
-      showToast('Location updated successfully', 'success');
-    } catch (error) {
-      console.error('Geolocation error:', error);
-      appState.setError(error);
-      showToast('Unable to get your location', 'error');
+        console.error('Location error:', error);
+        showError(error.message || 'Failed to get location');
     } finally {
-      appState.setLoading(false);
+        hideLoading();
     }
-  }
+}
 
-  async loadWeatherForLocation(location) {
-    try {
-      appState.setLoading(true);
-      appState.clearError();
-      appState.setCurrentLocation(location);
-
-      // Fetch weather data
-      const weatherData = await getWeatherForecast(location.latitude, location.longitude);
-      appState.setCurrentWeather(weatherData);
-
-      // Fetch air quality data (optional)
-      try {
-        const airQualityData = await getAirQuality(location.latitude, location.longitude);
-        updateAirQuality(airQualityData);
-      } catch (error) {
-        console.warn('Air quality data unavailable:', error);
-        updateAirQuality(null);
-      }
-
-      // Update charts
-      updateCharts(weatherData);
-      
-      // Show weather content
-      showWeatherContent();
-      
-    } catch (error) {
-      console.error('Weather loading error:', error);
-      appState.setError(error);
-    } finally {
-      appState.setLoading(false);
-    }
-  }
-
-  async refreshWeatherData() {
-    const location = appState.getCurrentLocation();
-    if (!location) return;
-
-    try {
-      // Silent refresh - don't show loading state
-      const weatherData = await getWeatherForecast(location.latitude, location.longitude);
-      appState.setCurrentWeather(weatherData);
-      updateCharts(weatherData);
-
-      // Update air quality
-      try {
-        const airQualityData = await getAirQuality(location.latitude, location.longitude);
-        updateAirQuality(airQualityData);
-      } catch (error) {
-        console.warn('Air quality refresh failed:', error);
-      }
-    } catch (error) {
-      console.warn('Weather refresh failed:', error);
-    }
-  }
-
-  toggleFavorite() {
-    const location = appState.getCurrentLocation();
-    if (!location) return;
-
-    if (appState.isFavorite(location)) {
-      // Find and remove the favorite
-      const favorites = appState.getFavorites();
-      const favorite = favorites.find(fav => 
-        Math.abs(fav.latitude - location.latitude) < 0.01 && 
-        Math.abs(fav.longitude - location.longitude) < 0.01
-      );
-      if (favorite) {
-        appState.removeFavorite(favorite.id);
-        showToast('Removed from favorites', 'success');
-      }
-    } else {
-      const added = appState.addFavorite(location);
-      if (added) {
-        showToast('Added to favorites', 'success');
-      }
-    }
-  }
-
-  toggleTheme() {
-    const currentTheme = appState.getSetting('theme', 'auto');
+// Handle theme toggle
+function handleThemeToggle() {
+    const currentTheme = appState.get().settings.theme;
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    appState.updateSetting('theme', newTheme);
-    this.applyTheme(newTheme);
-  }
-
-  applyTheme(theme) {
-    const body = document.body;
     
-    if (theme === 'dark') {
-      body.classList.add('dark-mode');
-    } else if (theme === 'light') {
-      body.classList.remove('dark-mode');
-    } else {
-      // Auto theme - use system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        body.classList.add('dark-mode');
-      } else {
-        body.classList.remove('dark-mode');
-      }
-    }
-  }
-
-  toggleUnits() {
-    const currentUnit = appState.getSetting('temperatureUnit', 'celsius');
-    const newUnit = currentUnit === 'celsius' ? 'fahrenheit' : 'celsius';
-    appState.updateSetting('temperatureUnit', newUnit);
+    appState.updateSettings({ theme: newTheme });
+    updateChartTheme(newTheme === 'dark');
     
-    // Update button text
-    const unitsToggle = document.getElementById('units-toggle');
-    unitsToggle.textContent = newUnit === 'celsius' ? '°C' : '°F';
-    
-    showToast(`Temperature unit changed to ${newUnit === 'celsius' ? 'Celsius' : 'Fahrenheit'}`, 'success');
-  }
-
-  async registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('Service Worker registered:', registration);
-      } catch (error) {
-        console.warn('Service Worker registration failed:', error);
-      }
-    }
-  }
+    showSuccess(`Switched to ${newTheme} theme`);
 }
 
-// Initialize the app
-const app = new WeatherApp();
-
-// Wait for DOM to be ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => app.init());
-} else {
-  app.init();
+// Handle document clicks for suggestion selection
+function handleDocumentClick(e) {
+    const elements = getDOMElements();
+    
+    // Handle suggestion item clicks
+    if (e.target.closest('.suggestion-item')) {
+        const item = e.target.closest('.suggestion-item');
+        const location = {
+            name: item.dataset.name,
+            country: item.dataset.country,
+            admin1: item.dataset.admin1,
+            latitude: parseFloat(item.dataset.lat),
+            longitude: parseFloat(item.dataset.lng)
+        };
+        
+        loadWeatherData(location);
+        hideSearchSuggestions();
+        elements.searchInput.value = location.name;
+        elements.searchInput.blur();
+    }
+    
+    // Handle favorite item clicks
+    if (e.target.closest('.favorite-item') && !e.target.closest('.remove-favorite')) {
+        const item = e.target.closest('.favorite-item');
+        const location = {
+            name: item.dataset.name,
+            country: item.dataset.country,
+            admin1: item.dataset.admin1,
+            latitude: parseFloat(item.dataset.lat),
+            longitude: parseFloat(item.dataset.lng)
+        };
+        
+        loadWeatherData(location);
+        toggleFavorites(false);
+        elements.searchInput.value = location.name;
+    }
+    
+    // Handle remove favorite clicks
+    if (e.target.closest('.remove-favorite')) {
+        e.stopPropagation();
+        const button = e.target.closest('.remove-favorite');
+        const locationId = button.dataset.id;
+        
+        appState.removeFromFavorites(locationId);
+        showSuccess('Removed from favorites');
+    }
+    
+    // Hide search suggestions when clicking outside
+    if (!e.target.closest('.search-container')) {
+        hideSearchSuggestions();
+    }
 }
 
-// Handle window resize for responsive charts
-window.addEventListener('resize', () => {
-  // Import and call resize function
-  import('./charts.js').then(({ resizeCharts }) => {
+// Handle window resize
+function handleWindowResize() {
     resizeCharts();
-  });
+}
+
+// Handle keyboard shortcuts
+function handleKeyboardShortcuts(e) {
+    const elements = getDOMElements();
+    
+    // Ctrl/Cmd + K to focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        elements.searchInput?.focus();
+    }
+    
+    // Ctrl/Cmd + , to open settings
+    if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        toggleSettings(true);
+    }
+    
+    // Escape to close modals
+    if (e.key === 'Escape') {
+        toggleSettings(false);
+        toggleFavorites(false);
+    }
+    
+    // Ctrl/Cmd + D to toggle theme
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        handleThemeToggle();
+    }
+}
+
+// Handle online status
+function handleOnline() {
+    console.log('App is online');
+    const state = appState.get();
+    
+    // Refresh data if it's stale and we have a location
+    if (state.currentLocation && state.lastUpdated) {
+        const lastUpdate = new Date(state.lastUpdated);
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        
+        if (lastUpdate < fiveMinutesAgo) {
+            refreshWeatherData();
+        }
+    }
+}
+
+// Handle offline status
+function handleOffline() {
+    console.log('App is offline');
+    showError('App is offline. Some features may not work.');
+}
+
+// Handle visibility change
+function handleVisibilityChange() {
+    const state = appState.get();
+    
+    if (!document.hidden && state.settings.autoRefresh && state.currentLocation) {
+        // Check if data is stale when app becomes visible
+        if (state.lastUpdated) {
+            const lastUpdate = new Date(state.lastUpdated);
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+            
+            if (lastUpdate < tenMinutesAgo) {
+                refreshWeatherData();
+            }
+        }
+    }
+}
+
+// Initialize settings
+function initializeSettings() {
+    const state = appState.get();
+    
+    // Apply initial theme
+    appState.applyTheme(state.settings.theme);
+    
+    // Update settings UI
+    updateSettingsUI();
+    
+    // Subscribe to state changes
+    appState.subscribe((newState, changes) => {
+        if (changes.settings) {
+            updateSettingsUI();
+        }
+    });
+}
+
+// Initialize location
+async function initializeLocation() {
+    const state = appState.get();
+    
+    // Try saved location first
+    if (state.currentLocation) {
+        try {
+            await loadWeatherData(state.currentLocation);
+            return;
+        } catch (error) {
+            console.warn('Failed to load weather for saved location:', error);
+        }
+    }
+    
+    // Try to get current location
+    try {
+        const permission = await checkLocationPermission();
+        
+        // If already granted, fetch location directly
+        if (permission === 'granted') {
+            const position = await getCurrentPosition();
+            const locationData = await reverseGeocode(position.latitude, position.longitude);
+            
+            const location = locationData || {
+                name: 'Current Location',
+                latitude: position.latitude,
+                longitude: position.longitude,
+                country: '',
+                admin1: ''
+            };
+            
+            await loadWeatherData(location);
+
+        } else {
+            // Instead of falling back to New York, show prompt/error
+            showError('Please allow location access or search for your city.');
+            // Optionally: focus the search box
+            const elements = getDOMElements();
+            elements.searchInput?.focus();
+        }
+    } catch (error) {
+        console.error('Failed to get initial location:', error);
+        showError('Unable to get location. Please search for a city.');
+    }
+}
+
+
+// Load weather data for a location
+async function loadWeatherData(location) {
+    try {
+        appState.setLoading(true);
+        
+        // Load weather data
+        const [weatherData, airQualityData] = await Promise.allSettled([
+            getWeatherData(location.latitude, location.longitude),
+            getAirQualityData(location.latitude, location.longitude)
+        ]);
+        
+        const weather = weatherData.status === 'fulfilled' ? weatherData.value : null;
+        const airQuality = airQualityData.status === 'fulfilled' ? airQualityData.value : null;
+        
+        if (!weather) {
+            throw new Error('Failed to load weather data');
+        }
+        
+        // Update app state
+        appState.setCurrentWeather(location, weather, airQuality);
+        
+        // Update UI
+        renderCurrentWeather(location, weather);
+        renderWeeklyForecast(weather);
+        renderAstronomy(weather);
+        renderWeatherDetails(weather);
+        updateHourlyChart(weather);
+        
+        if (airQuality) {
+            renderAirQuality(airQuality);
+        }
+        
+        // Update favorites if this location is favorited
+        if (appState.isFavorite(location.latitude, location.longitude)) {
+            appState.updateFavoriteWeather(`${location.latitude},${location.longitude}`, weather);
+        }
+        
+    } catch (error) {
+        console.error('Failed to load weather data:', error);
+        appState.setError(error);
+        showError(error.message || 'Failed to load weather data');
+        throw error;
+    } finally {
+        appState.setLoading(false);
+    }
+}
+
+// Refresh current weather data
+async function refreshWeatherData() {
+    const state = appState.get();
+    
+    if (!state.currentLocation) {
+        return;
+    }
+    
+    try {
+        await loadWeatherData(state.currentLocation);
+        console.log('Weather data refreshed');
+    } catch (error) {
+        console.error('Failed to refresh weather data:', error);
+        // Don't show error for automatic refresh failures
+    }
+}
+
+// Refresh current weather display with new units
+function refreshCurrentWeatherDisplay() {
+    const state = appState.get();
+    
+    if (state.currentLocation && state.currentWeather) {
+        renderCurrentWeather(state.currentLocation, state.currentWeather);
+        renderWeeklyForecast(state.currentWeather);
+        renderWeatherDetails(state.currentWeather);
+        updateHourlyChart(state.currentWeather);
+        
+        if (state.currentAirQuality) {
+            renderAirQuality(state.currentAirQuality);
+        }
+    }
+}
+
+// Setup auto-refresh functionality
+function setupAutoRefresh() {
+    const state = appState.get();
+    
+    // Clear existing interval
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    
+    // Setup new interval if auto-refresh is enabled
+    if (state.settings.autoRefresh) {
+        const intervalMs = (state.settings.refreshInterval || 10) * 60 * 1000; // Convert minutes to milliseconds
+        
+        refreshInterval = setInterval(() => {
+            if (!document.hidden) { // Only refresh when app is visible
+                refreshWeatherData();
+            }
+        }, intervalMs);
+        
+        console.log(`Auto-refresh enabled: ${state.settings.refreshInterval} minutes`);
+    }
+}
+
+// Initialize service worker for PWA
+async function initializeServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('Service Worker registered:', registration);
+            
+            // Listen for service worker updates
+            registration.addEventListener('updatefound', () => {
+                console.log('Service Worker update found');
+            });
+            
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+        }
+    }
+}
+
+// Cleanup function for page unload
+function cleanup() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+}
+
+// Initialize app when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', cleanup);
+
+// Global error handler
+window.addEventListener('error', (e) => {
+    console.error('Global error:', e.error);
+    showError('Something went wrong. Please refresh the page.');
 });
 
-// Handle online/offline status
-window.addEventListener('online', () => {
-  showToast('Connection restored', 'success');
-  app.refreshWeatherData();
+// Unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+    // Don't show UI error for promise rejections as they're often handled elsewhere
+    e.preventDefault();
 });
 
-window.addEventListener('offline', () => {
-  showToast('You are offline. Some features may be limited.', 'warning', 5000);
-});
-
-// Export app instance for debugging
-window.WeatherApp = app;
+// Export for debugging
+window.WeatherApp = {
+    appState,
+    loadWeatherData,
+    refreshWeatherData
+};
