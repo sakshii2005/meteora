@@ -1,6 +1,6 @@
 // ui.js
 import { appState } from './state.js';
-import { getAQIDescription } from './api.js';
+import { getWeatherIcon, getAQIDescription, getMoonPhase } from './api.js';
 import { getMoonPhase } from './api.js';
 
 // DOM element references
@@ -117,7 +117,7 @@ export function updateCurrentWeather(weatherData, locationData) {
   elements.currentLocation.textContent = `${locationData.name}${locationData.country ? `, ${locationData.country}` : ''}`;
   
   // Weather icon and temperature
-  //const icon = getWeatherIcon(current.temperature, 0);
+  const icon = getWeatherIcon(current.temperature, 0);
   elements.currentIcon.textContent = icon;
   elements.currentTemp.textContent = appState.formatTemperature(current.temperature);
   
@@ -157,7 +157,7 @@ export function updateDailyForecast(dailyData) {
   const html = dailyData.map((day, index) => {
     const date = new Date(day.date);
     const dayName = index === 0 ? 'Today' : date.toLocaleDateString('en', { weekday: 'short' });
-    //const icon = getWeatherIcon((day.tempMax + day.tempMin) / 2, day.precipitationProbability);
+    const icon = getWeatherIcon((day.tempMax + day.tempMin) / 2, day.precipitationProbability);
     
     return `
       <div class="text-center p-4 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">

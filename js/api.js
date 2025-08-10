@@ -72,6 +72,23 @@ export async function searchCities(query) {
     }
 }
 
+export function getWeatherIcon(temp, precipitationProbability = 0) {
+  // Example: basic emoji mapping
+  if (precipitationProbability > 50) return '🌧️';
+  if (temp < 0) return '❄️';
+  if (temp > 30) return '🔥';
+  return '☀️';
+}
+
+export function getAQIDescription(aqi) {
+  if (aqi <= 50) return { level: 'Good', color: 'text-green-600', bg: 'bg-green-100' };
+  if (aqi <= 100) return { level: 'Moderate', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+  if (aqi <= 150) return { level: 'Unhealthy for Sensitive Groups', color: 'text-orange-600', bg: 'bg-orange-100' };
+  if (aqi <= 200) return { level: 'Unhealthy', color: 'text-red-600', bg: 'bg-red-100' };
+  if (aqi <= 300) return { level: 'Very Unhealthy', color: 'text-purple-600', bg: 'bg-purple-100' };
+  return { level: 'Hazardous', color: 'text-pink-600', bg: 'bg-pink-100' };
+}
+
 
 //MOON PHASE
 export function getMoonPhase(date = new Date()) {
