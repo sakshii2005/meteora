@@ -2,7 +2,6 @@
 import { searchCities, getWeatherData, getAirQualityData, getCurrentPosition, reverseGeocode } from './api.js';
 import { appState } from './state.js';
 import { 
-    initializeDOMElements, 
     showLoading, 
     hideLoading, 
     showError, 
