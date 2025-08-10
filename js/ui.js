@@ -1,7 +1,6 @@
 // ui.js
 import { appState } from './state.js';
 import { getWeatherIcon, getAQIDescription, getMoonPhase } from './api.js';
-import { getMoonPhase } from './api.js';
 
 // DOM element references
 const elements = {
