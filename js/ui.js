@@ -178,6 +178,14 @@ export function getDOMElements() {
   };
 }
 
+// ToggleSettings
+export function toggleSetting(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.classList.toggle('hidden');
+}
+
+
 // Update daily forecast display
 export function updateDailyForecast(dailyData) {
   if (!dailyData || dailyData.length === 0) return;

@@ -1,5 +1,6 @@
 // charts.js
 import { appState } from './state.js';
+import Chart from 'chart.js/auto';
 
 let tempChart = null;
 let precipitationChart = null;
